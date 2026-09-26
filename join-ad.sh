@@ -177,20 +177,14 @@ services = nss, pam, ssh
 id_provider = ad
 auth_provider = ad
 access_provider = simple
-
 ad_domain = ${AD_DOMAIN}
 krb5_realm = ${AD_REALM}
-
 default_shell = ${AD_DEFAULT_SHELL}
 cache_credentials = ${CACHE_CREDENTIALS}
-
 use_fully_qualified_names = ${USE_FULLY_QUALIFIED_NAMES}
 fallback_homedir = /home/%u
-
 ldap_id_mapping = true
-
 ldap_user_ssh_public_key = ${SSH_KEY_ATTRIBUTE}
-
 simple_allow_groups = access_${CURRENT_HOSTNAME}
 EOF
 
@@ -293,17 +287,4 @@ echo "Active Directory : ${AD_DOMAIN}"
 echo "Kerberos realm   : ${AD_REALM}"
 echo "SSSD SSH mapping : ${SSH_KEY_ATTRIBUTE}"
 echo "Home directory   : /home/<username>"
-echo
-echo "Useful verification commands:"
-echo
-echo "  realm list"
-echo "  adcli testjoin -D ${AD_DOMAIN}"
-echo "  sssctl config-check"
-echo "  systemctl status sssd"
-echo "  id <ad-user>"
-echo "  getent passwd <ad-user>"
-echo "  sss_ssh_authorizedkeys <ad-user>"
-echo "  sshd -T | grep -Ei 'authorizedkeys(command|commanduser)|pubkeyauthentication'"
-echo
-echo "AD users will receive a home directory automatically on first PAM login."
-echo
+echo "Access Group     : access_${CURRENT_HOSTNAME}"
