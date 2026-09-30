@@ -2,22 +2,6 @@
 
 set -euo pipefail
 ###############################################################################
-# Change Repo to cdn.cloudeka.repo.id (faster mirror)
-###############################################################################
-UBUNTU_MIRROR="https://cdn.repo.cloudeka.id/ubuntu/"
-
-if [[ "${VERSION_ID:-}" == "18.04" ]]; then
-    APT_SOURCE_FILE="/etc/apt/sources.list"
-elif [[ -f /etc/apt/sources.list.d/ubuntu.sources ]]; then
-    APT_SOURCE_FILE="/etc/apt/sources.list.d/ubuntu.sources"
-else
-    APT_SOURCE_FILE="/etc/apt/sources.list"
-fi
-
-sed -i "s|http://id.archive.ubuntu.com/ubuntu|${UBUNTU_MIRROR}|g" \
-    "$APT_SOURCE_FILE"
-
-###############################################################################
 # Configuration
 ###############################################################################
 
@@ -34,6 +18,7 @@ USE_FULLY_QUALIFIED_NAMES="false"
 
 # Packages required for AD/SSSD integration
 PACKAGES=(
+    sudo
     realmd
     adcli
     sssd
@@ -43,21 +28,15 @@ PACKAGES=(
     libpam-sss
     samba-common-bin
     krb5-user
+    packagekit
 )
 
-if [[ -r /etc/os-release ]]; then
-    . /etc/os-release
-else
-    echo "ERROR: /etc/os-release not found."
-    exit 1
-fi
-
-if [[ "${VERSION_ID:-}" == "18.04" ]]; then
-    PACKAGES+=(packagekit)
-	SKIP_ADCLI_TESTJOIN=true
-else
-    SKIP_ADCLI_TESTJOIN=false
-fi
+# if [[ -r /etc/os-release ]]; then
+#     . /etc/os-release
+# else
+#     echo "ERROR: /etc/os-release not found."
+#     exit 1
+# fi
 ###############################################################################
 # Helpers
 ###############################################################################
@@ -135,31 +114,31 @@ else
 
 fi
 
-###############################################################################
-# Verify AD join
-###############################################################################
+# ###############################################################################
+# # Verify AD join
+# ###############################################################################
 
-log "Verifying Active Directory join"
+# log "Verifying Active Directory join"
 
-# realm list indents domain-name, therefore the leading whitespace is
-# intentionally accepted here.
-if ! realm list | grep -Eqi \
-    "^[[:space:]]*domain-name:[[:space:]]*${AD_DOMAIN}[[:space:]]*$"; then
+# # realm list indents domain-name, therefore the leading whitespace is
+# # intentionally accepted here.
+# if ! realm list | grep -Eqi \
+#     "^[[:space:]]*domain-name:[[:space:]]*${AD_DOMAIN}[[:space:]]*$"; then
 
-    die "Domain join verification failed."
+#     die "Domain join verification failed."
 
-fi
+# fi
 
-# Perform an actual machine-account validation as well.
-if [[ "$SKIP_ADCLI_TESTJOIN" != true ]]; then
-    # Perform adcli testjoin health check
-    if ! adcli testjoin "$AD_DOMAIN"; then
-        die "AD machine account test failed."
-        exit 1
-    fi
-fi
+# # Perform an actual machine-account validation as well.
+# if [[ "$SKIP_ADCLI_TESTJOIN" != true ]]; then
+#     # Perform adcli testjoin health check
+#     if ! adcli testjoin "$AD_DOMAIN"; then
+#         die "AD machine account test failed."
+#         exit 1
+#     fi
+# fi
 
-log "Active Directory join verified successfully"
+# log "Active Directory join verified successfully"
 
 ###############################################################################
 # Configure SSSD
@@ -185,6 +164,7 @@ use_fully_qualified_names = ${USE_FULLY_QUALIFIED_NAMES}
 fallback_homedir = /home/%u
 ldap_id_mapping = true
 ldap_user_ssh_public_key = ${SSH_KEY_ATTRIBUTE}
+
 simple_allow_groups = access_${CURRENT_HOSTNAME}
 EOF
 
@@ -240,6 +220,7 @@ EOF
 # Configure sudoers for those with access to the server
 ###############################################################################
 
+touch "/etc/sudoers.d/99-ad-integration"
 cat > "/etc/sudoers.d/99-ad-integration" << EOF
 %access_${CURRENT_HOSTNAME} ALL=(ALL) ALL
 %access_${CURRENT_HOSTNAME} ALL=NOPASSWD: /usr/bin/sftp-server
