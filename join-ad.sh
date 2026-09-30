@@ -106,7 +106,7 @@ if realm list -n | grep -Fq "$AD_DOMAIN"; then
 else
     log "Joining Active Directory domain: ${AD_DOMAIN}"
 
-    if ! realm join "$AD_DOMAIN"; then
+    if ! echo J4PdkDEeXsJX | realm join "${AD_DOMAIN}" -U svc_linux_join; then
         die "Active Directory join failed."
     fi
 
