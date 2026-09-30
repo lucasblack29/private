@@ -101,44 +101,17 @@ fi
 # Join AD if necessary
 ###############################################################################
 
-if realm list | grep -Eqi \
-    "^[[:space:]]*domain-name:[[:space:]]*${AD_DOMAIN}[[:space:]]*$"; then
-
-    log "System is already joined to ${AD_DOMAIN}"
-
+if realm list -n | grep -Fq "$AD_DOMAIN"; then
+    log "Already joined to ${AD_DOMAIN}"
 else
+    log "Joining Active Directory domain: ${AD_DOMAIN}"
 
-    log "Joining ${AD_DOMAIN}"
+    if ! realm join "$AD_DOMAIN"; then
+        die "Active Directory join failed."
+    fi
 
-    echo J4PdkDEeXsJX | realm join "${AD_DOMAIN}" -U svc_linux_join
-
+    log "Active Directory join successful"
 fi
-
-# ###############################################################################
-# # Verify AD join
-# ###############################################################################
-
-# log "Verifying Active Directory join"
-
-# # realm list indents domain-name, therefore the leading whitespace is
-# # intentionally accepted here.
-# if ! realm list | grep -Eqi \
-#     "^[[:space:]]*domain-name:[[:space:]]*${AD_DOMAIN}[[:space:]]*$"; then
-
-#     die "Domain join verification failed."
-
-# fi
-
-# # Perform an actual machine-account validation as well.
-# if [[ "$SKIP_ADCLI_TESTJOIN" != true ]]; then
-#     # Perform adcli testjoin health check
-#     if ! adcli testjoin "$AD_DOMAIN"; then
-#         die "AD machine account test failed."
-#         exit 1
-#     fi
-# fi
-
-# log "Active Directory join verified successfully"
 
 ###############################################################################
 # Configure SSSD
@@ -150,8 +123,6 @@ cat > /etc/sssd/sssd.conf <<EOF
 [sssd]
 domains = ${AD_DOMAIN}
 services = nss, pam, ssh
-
-
 [domain/${AD_DOMAIN}]
 id_provider = ad
 auth_provider = ad
@@ -164,7 +135,6 @@ use_fully_qualified_names = ${USE_FULLY_QUALIFIED_NAMES}
 fallback_homedir = /home/%u
 ldap_id_mapping = true
 ldap_user_ssh_public_key = ${SSH_KEY_ATTRIBUTE}
-
 simple_allow_groups = access_${CURRENT_HOSTNAME}
 EOF
 
